@@ -1,4 +1,5 @@
 // geojson preview module
+var api_key = null;
 ckan.module('geojsonpreview', function (jQuery, _) {
   return {
     options: {
@@ -9,7 +10,14 @@ ckan.module('geojsonpreview', function (jQuery, _) {
         var reserved = ['stroke', 'marker-color', 'marker-size', 'fill', 'fill-opacity', 'stroke-opacity', 'stroke-width'];
         if (feature.properties) {
           jQuery.each(feature.properties, function(key, value){
-            if (reserved.indexOf(key) == -1) {
+            //Allows rudimentary showing of things only for authenticated users (e.g. links to CKAN explorer)
+            if (typeof value == 'string' && value.indexOf('{{apikey}}') !== -1) {
+                if (api_key) { //Only show the property if api key is set
+                    value = value.replace('{{apikey}}', api_key);
+                    body += L.Util.template(row, {key: key, value: value});
+                }
+            }
+            else if (reserved.indexOf(key) == -1) {
               if (value != null && typeof value === 'object') {
                 value = JSON.stringify(value);
               }
@@ -56,7 +64,7 @@ ckan.module('geojsonpreview', function (jQuery, _) {
     },
     initialize: function () {
       var self = this;
-      
+      if (this.options.api_key) api_key = this.options.api_key; 
       self.el.empty();
       self.el.append($("<div></div>").attr("id","map"));
       self.map = ckan.commonLeafletMap('map', this.options.map_config);
@@ -64,7 +72,7 @@ ckan.module('geojsonpreview', function (jQuery, _) {
       self.map.eachLayer(function (layer) {
 if (layer.setOpacity) {
  transport = layer;
-}}); 
+}});
 var Esri_WorldImagery = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
 	attribution: this.options.map_config.attribution,//'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         maxNativeZoom: 18
@@ -104,7 +112,7 @@ var overlayMaps = {
         type: 'json'
       },
       {
-        interval: 1000,
+        interval: 100000,
         style: self.options.style,
         pointToLayer: function(feature, latlng) {
           return new L.CircleMarker(latlng, self.options.style);
